@@ -1,14 +1,15 @@
+
 import 'package:file_download_tutorial/download_cubit/file_manager_cubit.dart';
 import 'package:file_download_tutorial/models/file_info.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:open_file_safe/open_file_safe.dart';
+import 'package:open_filex/open_filex.dart';
 
 class SingleFileDownload extends StatelessWidget {
   SingleFileDownload({Key? key, required this.fileInfo}) : super(key: key);
 
   final FileInfo fileInfo;
-   FileManagerCubit fileManagerCubit = FileManagerCubit();
+  FileManagerCubit fileManagerCubit = FileManagerCubit();
 
   @override
   Widget build(BuildContext context) {
@@ -28,13 +29,13 @@ class SingleFileDownload extends StatelessWidget {
             onTap: () {
               context
                   .read<FileManagerCubit>()
-                  .downloadFile(url: fileInfo.fileUrl,fileName: fileInfo.fileName);
+                  .downloadIfExists(fileInfo: fileInfo);
             },
             trailing: IconButton(
               onPressed: () {
                 if (state.newFileLocation.isNotEmpty) {
                   print(state.newFileLocation);
-                  OpenFile.open(state.newFileLocation);
+                  OpenFilex.open(state.newFileLocation);
                 }
               },
               icon: const Icon(Icons.file_open),

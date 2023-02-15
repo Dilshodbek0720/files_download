@@ -1,12 +1,14 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:bloc/bloc.dart';
 import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:file_download_tutorial/models/file_info.dart';
+import 'package:file_download_tutorial/services/local_notification_service.dart';
 import 'package:flutter/material.dart';
-import 'package:open_file_safe/open_file_safe.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -26,29 +28,39 @@ class FileManagerCubit extends Cubit<FileManagerState> {
   }) async {
     bool hasPermission = await _requestWritePermission();
     if (!hasPermission) return;
-    Dio dio = Dio();
     var directory = await getDownloadPath();
-    if(directory==null){
-      return ;
+    if (directory == null) {
+      return;
     }
-    print("PATH :${directory.path}");
     String url = fileInfo.fileUrl;
     String newFileLocation =
         "${directory.path}/${fileInfo.fileName}${DateTime.now().millisecond}${url.substring(url.length - 5, url.length)}";
     try {
-      await dio.download(url, newFileLocation,
-          onReceiveProgress: (received, total) {
-        var pr = received / total;
-        print(pr);
-        emit(state.copyWith(progress: pr));
-      });
-     emit(state.copyWith(newFileLocation: newFileLocation));
+      LocalNotificationService.localNotificationService
+          .showNotification(id: 1, title: "Download LOADING");
+      final receiverPort = ReceivePort();
+      await Isolate.spawn(
+        (List<Object> args) async {
+          Dio dio = Dio();
+          await dio.download(url, newFileLocation);
+          Isolate.exit((args[0] as SendPort), args[1] as String);
+        },
+        [receiverPort.sendPort, newFileLocation],
+      );
+      String newLocation = await receiverPort.first as String;
+      LocalNotificationService.localNotificationService
+          .showNotification(id: 1, title: "Download END");
+      if (newLocation.isNotEmpty) OpenFilex.open(newLocation);
     } catch (error) {
       debugPrint("DOWNLOAD ERROR:$error");
     }
   }
 
-  void downloadFile({
+  myProgressEmitter(double pr) {
+    emit(state.copyWith(progress: pr));
+  }
+
+  downloadFile({
     required String fileName,
     required String url,
   }) async {
@@ -72,15 +84,20 @@ class FileManagerCubit extends Cubit<FileManagerState> {
     });
 
     if (filePaths.contains(newFileLocation)) {
-      OpenFile.open(newFileLocation);
+      OpenFilex.open(newFileLocation);
     } else {
       try {
-        await dio.download(url, newFileLocation,
-            onReceiveProgress: (received, total) {
-          double pr = received / total;
-          emit(state.copyWith(progress: pr));
-        });
-        OpenFile.open(newFileLocation);
+        final receiverPort = ReceivePort();
+
+        await Isolate.spawn(
+          (SendPort sendPort) async {
+            await dio.download(url, newFileLocation);
+            Isolate.exit(sendPort, newFileLocation);
+          },
+          receiverPort.sendPort,
+        );
+
+        OpenFilex.open(await receiverPort.first as String);
       } catch (error) {
         debugPrint("DOWNLOAD ERROR:$error");
       }
