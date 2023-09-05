@@ -17,7 +17,7 @@ part 'file_manager_state.dart';
 class FileManagerCubit extends Cubit<FileManagerState> {
   FileManagerCubit()
       : super(
-          FileManagerState(
+          const FileManagerState(
             progress: 0.0,
             newFileLocation: "",
           ),
@@ -35,10 +35,13 @@ class FileManagerCubit extends Cubit<FileManagerState> {
     String url = fileInfo.fileUrl;
     String newFileLocation =
         "${directory.path}/${fileInfo.fileName}${DateTime.now().millisecond}${url.substring(url.length - 5, url.length)}";
+
     try {
       LocalNotificationService.localNotificationService
           .showNotification(id: 1, title: "Download LOADING");
+
       final receiverPort = ReceivePort();
+
       await Isolate.spawn(
         (List<Object> args) async {
           Dio dio = Dio();
@@ -91,7 +94,10 @@ class FileManagerCubit extends Cubit<FileManagerState> {
 
         await Isolate.spawn(
           (SendPort sendPort) async {
-            await dio.download(url, newFileLocation);
+            await dio.download(url, newFileLocation,
+                onReceiveProgress: (count, total) {
+              print("COUNT: $count");
+            });
             Isolate.exit(sendPort, newFileLocation);
           },
           receiverPort.sendPort,

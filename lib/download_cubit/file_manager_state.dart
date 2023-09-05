@@ -1,7 +1,7 @@
 part of 'file_manager_cubit.dart';
 
 class FileManagerState extends Equatable {
-  FileManagerState({
+  const FileManagerState({
     required this.progress,
     required this.newFileLocation,
   });
