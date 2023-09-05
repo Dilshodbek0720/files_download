@@ -1,12 +1,10 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:isolate';
 
 import 'package:bloc/bloc.dart';
 import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:file_download_tutorial/models/file_info.dart';
-import 'package:file_download_tutorial/services/local_notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
@@ -23,49 +21,12 @@ class FileManagerCubit extends Cubit<FileManagerState> {
           ),
         );
 
-  void downloadIfExists({
-    required FileInfo fileInfo,
-  }) async {
-    bool hasPermission = await _requestWritePermission();
-    if (!hasPermission) return;
-    var directory = await getDownloadPath();
-    if (directory == null) {
-      return;
-    }
-    String url = fileInfo.fileUrl;
-    String newFileLocation =
-        "${directory.path}/${fileInfo.fileName}${DateTime.now().millisecond}${url.substring(url.length - 5, url.length)}";
-
-    try {
-      LocalNotificationService.localNotificationService
-          .showNotification(id: 1, title: "Download LOADING");
-
-      final receiverPort = ReceivePort();
-
-      await Isolate.spawn(
-        (List<Object> args) async {
-          Dio dio = Dio();
-          await dio.download(url, newFileLocation);
-          Isolate.exit((args[0] as SendPort), args[1] as String);
-        },
-        [receiverPort.sendPort, newFileLocation],
-      );
-      String newLocation = await receiverPort.first as String;
-      LocalNotificationService.localNotificationService
-          .showNotification(id: 1, title: "Download END");
-      if (newLocation.isNotEmpty) OpenFilex.open(newLocation);
-    } catch (error) {
-      debugPrint("DOWNLOAD ERROR:$error");
-    }
-  }
-
   myProgressEmitter(double pr) {
     emit(state.copyWith(progress: pr));
   }
 
   downloadFile({
-    required String fileName,
-    required String url,
+    required FileInfo fileInfo,
   }) async {
     //Permission get
     bool hasPermission = await _requestWritePermission();
@@ -74,8 +35,7 @@ class FileManagerCubit extends Cubit<FileManagerState> {
 
     // Userga ko'rinadigan path
     var directory = await getDownloadPath();
-    String newFileLocation =
-        "${directory?.path}/$fileName${url.substring(url.length - 5, url.length)}";
+    String newFileLocation = "${directory?.path}/${fileInfo.fileName}${fileInfo.fileUrl.substring(fileInfo.fileUrl.length - 5, fileInfo.fileUrl.length)}";
     var allFiles = directory?.list();
 
     print("NEW FILE:$newFileLocation");
@@ -90,20 +50,16 @@ class FileManagerCubit extends Cubit<FileManagerState> {
       OpenFilex.open(newFileLocation);
     } else {
       try {
-        final receiverPort = ReceivePort();
-
-        await Isolate.spawn(
-          (SendPort sendPort) async {
-            await dio.download(url, newFileLocation,
-                onReceiveProgress: (count, total) {
-              print("COUNT: $count");
-            });
-            Isolate.exit(sendPort, newFileLocation);
+        await dio.download(
+          fileInfo.fileUrl,
+          newFileLocation,
+          onReceiveProgress: (count, total) {
+            myProgressEmitter(count / total);
+            if (count / total == 1.0) {
+              emit(state.copyWith(newFileLocation: newFileLocation));
+            }
           },
-          receiverPort.sendPort,
         );
-
-        OpenFilex.open(await receiverPort.first as String);
       } catch (error) {
         debugPrint("DOWNLOAD ERROR:$error");
       }

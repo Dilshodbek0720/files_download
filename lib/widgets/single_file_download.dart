@@ -29,7 +29,7 @@ class SingleFileDownload extends StatelessWidget {
             onTap: () {
               context
                   .read<FileManagerCubit>()
-                  .downloadIfExists(fileInfo: fileInfo);
+                  .downloadFile(fileInfo: fileInfo);
             },
             trailing: IconButton(
               onPressed: () {
