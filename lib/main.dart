@@ -1,4 +1,4 @@
-import 'package:file_download_tutorial/download_example.dart';
+import 'package:file_download_tutorial/ui/chat_screen/chat_screen.dart';
 import 'package:file_download_tutorial/services/local_notification_service.dart';
 import 'package:flutter/material.dart';
 
@@ -20,7 +20,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: FileDownloadExample(),
+      home: ChatScreen(),
     );
   }
 }
