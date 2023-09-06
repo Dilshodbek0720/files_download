@@ -1,7 +1,6 @@
 import 'package:file_download_tutorial/models/file_info.dart';
 import 'package:file_download_tutorial/widgets/single_file_download.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({Key? key}) : super(key: key);
@@ -45,7 +44,7 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       body: Stack(
         children: [
-          Container(
+          SizedBox(
             height: double.infinity,
             width: double.infinity,
             child: Image.asset("assets/images/backround.png", fit: BoxFit.cover,),
